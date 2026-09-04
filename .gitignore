@@ -1,0 +1,23 @@
+# colcon outputs
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Packaging and native build outputs
+dist/
+wheelhouse/
+*.whl
+*.so
+*.egg-info/
+
+# Editor and OS-local files
+.DS_Store
+*.swp
+*~

@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "SDK: colcon build",
+      "type": "shell",
+      "command": "source /opt/ros/humble/setup.bash && source /home/niic/wheelloong/install/setup.bash && cd /home/niic/auto_sdk_ws && colcon build --symlink-install --packages-select wheelloong_auto_sdk",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "SDK: colcon test",
+      "type": "shell",
+      "command": "source /opt/ros/humble/setup.bash && source /home/niic/wheelloong/install/setup.bash && source /home/niic/auto_sdk_ws/install/setup.bash && cd /home/niic/auto_sdk_ws && colcon test --packages-select wheelloong_auto_sdk --event-handlers console_direct+ && colcon test-result --verbose",
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

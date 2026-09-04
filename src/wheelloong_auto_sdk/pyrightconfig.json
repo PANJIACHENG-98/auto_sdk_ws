@@ -1,0 +1,21 @@
+{
+  "include": [
+    "wheelloong_auto_sdk",
+    "examples",
+    "test"
+  ],
+  "extraPaths": [
+    ".",
+    "/home/niic/wheelloong/install/arm_common/local/lib/python3.10/dist-packages",
+    "/home/niic/wheelloong/install/system_common/local/lib/python3.10/dist-packages",
+    "/home/niic/wheelloong/install/voice_common/local/lib/python3.10/dist-packages",
+    "/home/niic/wheelloong/install/utils_common/local/lib/python3.10/dist-packages",
+    "/home/niic/wheelloong/install/nav2_msgs/local/lib/python3.10/dist-packages",
+    "/opt/ros/humble/lib/python3.10/site-packages",
+    "/opt/ros/humble/local/lib/python3.10/dist-packages"
+  ],
+  "pythonVersion": "3.10",
+  "pythonPlatform": "Linux",
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true
+}
