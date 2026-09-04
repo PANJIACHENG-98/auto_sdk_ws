@@ -5,8 +5,19 @@
   "python.analysis.diagnosticMode": "workspace",
   "python.analysis.typeCheckingMode": "basic",
   "python.analysis.autoImportCompletions": true,
+  "python.analysis.useLibraryCodeForTypes": true,
+  "python.analysis.include": [
+    "${workspaceFolder}/src/wheelloong_auto_sdk/wheelloong_auto_sdk",
+    "${workspaceFolder}/src/wheelloong_auto_sdk/examples",
+    "${workspaceFolder}/src/wheelloong_auto_sdk/test"
+  ],
+  "python.analysis.exclude": [
+    "${workspaceFolder}/build/**",
+    "${workspaceFolder}/install/**",
+    "${workspaceFolder}/log/**"
+  ],
   "python.analysis.extraPaths": [
-    "${workspaceFolder}/wheelloong_auto_sdk",
+    "${workspaceFolder}/src/wheelloong_auto_sdk",
     "/home/niic/auto_sdk_ws/build/wheelloong_auto_sdk",
     "/home/niic/auto_sdk_ws/install/wheelloong_auto_sdk/lib/python3.10/site-packages",
     "/home/niic/wheelloong/install/arm_common/local/lib/python3.10/dist-packages",
@@ -20,7 +31,7 @@
   "python.envFile": "${workspaceFolder}/.vscode/python.env",
   "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
-  "python.testing.cwd": "${workspaceFolder}/wheelloong_auto_sdk",
+  "python.testing.cwd": "${workspaceFolder}/src/wheelloong_auto_sdk",
   "python.testing.pytestArgs": [
     "test"
   ],

@@ -18,8 +18,8 @@ Python API 封装机器人 AUTO 模式下的系统控制、双臂、头腰、夹
 
 ```text
 auto_sdk_ws/
+├── .vscode/                     # Linux/ROS 2 开发配置
 ├── src/
-│   ├── .vscode/                 # Linux/ROS 2 开发配置
 │   └── wheelloong_auto_sdk/     # ROS 2 Python 包、示例与测试
 ├── build/                       # colcon 生成，不纳入版本管理
 ├── install/                     # colcon 生成，不纳入版本管理

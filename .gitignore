@@ -17,6 +17,9 @@ wheelhouse/
 *.so
 *.egg-info/
 
+# Generated Cython intermediates inside the SDK source package
+src/wheelloong_auto_sdk/wheelloong_auto_sdk/**/*.c
+
 # Editor and OS-local files
 .DS_Store
 *.swp

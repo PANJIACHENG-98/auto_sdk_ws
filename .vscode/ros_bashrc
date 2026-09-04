@@ -8,3 +8,5 @@ source /home/niic/wheelloong/install/setup.bash
 if [ -f /home/niic/auto_sdk_ws/install/setup.bash ]; then
   source /home/niic/auto_sdk_ws/install/setup.bash
 fi
+
+cd /home/niic/auto_sdk_ws

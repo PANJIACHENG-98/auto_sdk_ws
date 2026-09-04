@@ -103,10 +103,10 @@ Python 接口包。纯业务单元测试可以直接使用 `MockBackend`。
 用 VS Code 打开：
 
 ```text
-/home/niic/auto_sdk_ws/src
+/home/niic/auto_sdk_ws
 ```
 
-该目录和包内 `.vscode` 配置会补充 ROS/SDK 的 Python 搜索路径。推荐安装 Python、
+根目录的 `.vscode` 配置会补充 ROS/SDK 的 Python 搜索路径。推荐安装 Python、
 Pylance 和 ROS 扩展；终端选择 `Wheelloong ROS Bash` 配置后会自动 source 环境。
 
 ## 4. 最小使用示例
@@ -758,12 +758,10 @@ MoveJ 请求与正式 Demo 一样显式设置双臂模式、目标、速度结�
 |---|---|
 | `README.md` | 安装、API、样例、默认值、文件职责和排错说明。 |
 | `DELIVERY.md` | 双架构开发约束、源码保护方向和最终交付边界。 |
-| `.gitignore` | 排除缓存、测试结果以及未来生成的二进制产物。 |
 | `package.xml` | ROS 2 包名、版本、构建类型及运行/测试依赖。 |
 | `setup.py` | setuptools/ament_python 安装元数据和 Python 包发现。 |
 | `setup.cfg` | ROS 2 Python 可执行脚本安装目录配置。 |
 | `pytest.ini` | pytest 搜索目录及禁用 launch 测试插件。 |
-| `pyrightconfig.json` | Pylance/Pyright 搜索路径、Python 版本和检查级别。 |
 | `resource/wheelloong_auto_sdk` | ament index 包标记文件，内容为空是正常的。 |
 
 ### 12.2 公共 SDK 包
@@ -817,7 +815,9 @@ MoveJ 请求与正式 Demo 一样显式设置双臂模式、目标、速度结�
 | `test/test_waypoint_navigation_examples.py` | 点位文件和完整导航接口顺序测试。 |
 | `test/test_ros2_entry_points.py` | 确认所有样例均注册为可加载的 ROS 2 可执行入口。 |
 
-### 12.6 VS Code
+### 12.6 VS Code 工作区配置
+
+以下文件位于工作区根目录 `/home/niic/auto_sdk_ws/.vscode`：
 
 | 文件 | 功能 |
 |---|---|
@@ -867,7 +867,7 @@ Home 目录或 CPU 架构；VS Code、测试和工作空间路径属于开发配
 
 ### 导入失败或 VS Code 无法跳转
 
-确认打开 `/home/niic/auto_sdk_ws/src`，选择 `/usr/bin/python3`，然后重新 source 并
+确认打开 `/home/niic/auto_sdk_ws`，选择 `/usr/bin/python3`，然后重新 source 并
 构建。Pylance 修改后可执行 “Developer: Reload Window”。
 
 ### 服务或状态不可见
