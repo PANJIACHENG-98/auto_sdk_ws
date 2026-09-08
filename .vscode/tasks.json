@@ -4,7 +4,7 @@
     {
       "label": "SDK: colcon build",
       "type": "shell",
-      "command": "source /opt/ros/humble/setup.bash && source /home/niic/wheelloong/install/setup.bash && cd /home/niic/auto_sdk_ws && colcon build --symlink-install --packages-select wheelloong_auto_sdk",
+      "command": "source /opt/ros/humble/setup.bash && source /home/niic/wheelloong/install/setup.bash && cd /home/niic/auto_sdk_ws && colcon build --packages-select wheelloong_auto_sdk",
       "problemMatcher": [],
       "group": {
         "kind": "build",

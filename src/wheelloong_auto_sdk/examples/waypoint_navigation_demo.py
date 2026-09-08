@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Load stored waypoint ids and call the SDK navigation API directly."""
+"""读取编号点位并直接调用 SDK 执行单点或多点导航。
+
+本例会真实驱动机器人底盘。程序先读取并保存初始控制模式，再切换到 AUTO、清理
+局部和全局代价地图，并按命令行编号调用单点或多点导航；结束或 Ctrl+C 时取消
+活动目标，并在需要时恢复 IDLE。程序不会给双臂、头部或腰部上使能。
+"""
 
 import argparse
 from pathlib import Path

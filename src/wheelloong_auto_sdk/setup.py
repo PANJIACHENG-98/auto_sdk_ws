@@ -41,7 +41,7 @@ setup(
             "share/ament_index/resource_index/packages",
             ["resource/" + PACKAGE_NAME],
         ),
-        ("share/" + PACKAGE_NAME, ["package.xml", "README.md"]),
+        ("share/" + PACKAGE_NAME, ["package.xml"]),
     ],
     install_requires=["setuptools"],
     zip_safe=True,

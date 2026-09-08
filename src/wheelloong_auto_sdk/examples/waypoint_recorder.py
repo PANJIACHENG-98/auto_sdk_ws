@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Press S to save the robot's current map pose as a numbered waypoint."""
+"""交互式读取机器人当前位置并保存为编号导航点位。
+
+本例不发送运动命令。定位和 TF 正常时，程序持续读取 `map -> base_link`，按 S
+立即把当前 x、y、yaw 追加到点位文件，按 Q 退出；可通过命令行参数修改点位文件
+以及全局和机器人坐标系名称。
+"""
 
 import argparse
 import math
