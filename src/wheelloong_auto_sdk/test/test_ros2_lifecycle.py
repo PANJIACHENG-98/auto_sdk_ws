@@ -5,9 +5,6 @@ import math
 import pytest
 
 from geometry_msgs.msg import TransformStamped
-from rclpy.context import Context
-from rclpy.node import Node
-
 from wheelloong_auto_sdk import (
     CartesianPoseMM,
     CommandResult,
@@ -24,19 +21,6 @@ def test_standalone_owns_and_closes_private_runtime():
     robot = Robot.standalone(node_name="sdk_standalone_lifecycle_test")
     assert robot.node.get_name() == "sdk_standalone_lifecycle_test"
     robot.close()
-
-
-def test_from_node_does_not_destroy_caller_node_or_context():
-    """Leave a borrowed Node and its caller-owned Context alive on close."""
-    context = Context()
-    context.init()
-    node = Node("sdk_borrowed_node_test", context=context)
-    robot = Robot.from_node(node)
-    robot.close()
-    assert context.ok()
-    assert node.get_name() == "sdk_borrowed_node_test"
-    node.destroy_node()
-    context.shutdown()
 
 
 def test_real_generated_ros_request_translation_without_sending_commands():

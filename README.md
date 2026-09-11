@@ -16,7 +16,7 @@ Python 任务 SDK。SDK 封装了 AUTO 模式下的系统控制、双臂、头�
 - AUTO/IDLE 模式切换、轴使能与安全退出流程
 - Nav2 单点及多点导航、暂停、恢复、取消和代价地图清理
 - 文本播报与机器人本地音频播放
-- 支持独立 ROS 运行时和复用已有 ROS Node
+- 自动创建并管理独立 ROS Context、Node 和 Executor
 - ROS 2 真实后端与无硬件测试用 Mock 后端
 
 ## 工程结构
@@ -46,7 +46,7 @@ auto_sdk_ws/
 │       │       ├── base.py      # Backend 抽象接口
 │       │       ├── ros2.py      # ROS Topic/Service/Action 实现
 │       │       └── mock.py      # 无硬件测试实现
-│       ├── examples/            # 8 个可通过 ros2 run 启动的示例
+│       ├── examples/            # 7 个可通过 ros2 run 启动的示例
 │       ├── test/                # 公共 API、生命周期和示例测试
 │       ├── waypoint/            # 编号导航点位文件
 │       ├── package.xml          # ROS 2 包清单与依赖
@@ -103,13 +103,12 @@ source /home/niic/auto_sdk_ws/scripts/source_env.sh
 <table>
   <thead><tr><th>分类</th><th>接口</th><th>作用</th><th>Demo 直接调用</th></tr></thead>
   <tbody>
-    <tr><td rowspan="3">机器人入口</td><td><code>Robot.standalone()</code></td><td>创建并拥有私有 ROS Context、Node 和 Executor。</td><td>是：<code>standalone_demo.py:17</code> 等</td></tr>
-    <tr><td><code>Robot.from_node()</code></td><td>借用业务程序已有且持续 spin 的 ROS Node。</td><td>是：<code>existing_node_demo.py:30</code></td></tr>
+    <tr><td rowspan="2">机器人入口</td><td><code>Robot.standalone()</code></td><td>创建并拥有私有 ROS Context、Node 和 Executor。</td><td>是：<code>standalone_demo.py:17</code> 等</td></tr>
     <tr><td><code>Robot.with_backend()</code></td><td>注入 Mock、ROS 或扩展 Backend。</td><td>无</td></tr>
     <tr><td rowspan="4">生命周期</td><td><code>robot.node</code></td><td>访问后端使用的 ROS Node。</td><td>无</td></tr>
-    <tr><td><code>robot.state()</code></td><td>获取无 ROS 类型的系统状态快照。</td><td>是：<code>existing_node_demo.py:33</code>、<code>auto_oscillation_demo.py:335</code></td></tr>
+    <tr><td><code>robot.state()</code></td><td>获取无 ROS 类型的系统状态快照。</td><td>是：<code>auto_oscillation_demo.py:335</code></td></tr>
     <tr><td><code>robot.auto_session()</code></td><td>创建自动管理 AUTO、使能、Hold 和退出清理的上下文。</td><td>是：<code>standalone_demo.py:19</code></td></tr>
-    <tr><td><code>robot.close()</code></td><td>取消活动导航并按所有权规则释放资源。</td><td>是：<code>existing_node_demo.py:37</code></td></tr>
+    <tr><td><code>robot.close()</code></td><td>取消活动导航并释放 SDK 拥有的 ROS 资源。</td><td>无（Demo 通过 <code>with</code> 自动调用）</td></tr>
     <tr><td rowspan="3">系统控制</td><td><code>system.state()</code></td><td>获取满足新鲜度要求的系统状态。</td><td>是：<code>waypoint_navigation_demo.py:93</code>、<code>auto_session_demo.py:239</code></td></tr>
     <tr><td><code>system.set_control_mode()</code></td><td>请求切换 AUTO 或 IDLE。</td><td>是：<code>auto_session_demo.py:247</code> 等</td></tr>
     <tr><td><code>system.wait_for_control_mode()</code></td><td>等待控制模式实际生效。</td><td>是：<code>auto_session_demo.py:254</code> 等</td></tr>
@@ -285,9 +284,6 @@ ros2 run wheelloong_auto_sdk auto_session_demo \
   --observe-seconds 2 \
   --state-timeout 10 \
   --service-timeout 3
-
-# 只借用已有 ROS Node 读取一次系统状态，无命令行参数
-ros2 run wheelloong_auto_sdk existing_node_demo
 ```
 
 | `auto_session_demo` 参数 | 默认值 | 说明 |

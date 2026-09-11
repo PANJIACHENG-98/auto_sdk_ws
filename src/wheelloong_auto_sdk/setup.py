@@ -11,8 +11,6 @@ EXAMPLE_ENTRY_POINTS = [
     f"{EXAMPLES_PACKAGE}.auto_oscillation_demo:main",
     "auto_session_demo = "
     f"{EXAMPLES_PACKAGE}.auto_session_demo:main",
-    "existing_node_demo = "
-    f"{EXAMPLES_PACKAGE}.existing_node_demo:main",
     "plot_oscillation_targets = "
     f"{EXAMPLES_PACKAGE}.plot_oscillation_targets:main",
     "simulate_oscillation_targets = "

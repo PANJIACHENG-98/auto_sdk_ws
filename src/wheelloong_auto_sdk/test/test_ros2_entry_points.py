@@ -6,7 +6,6 @@ from importlib.metadata import distribution
 EXPECTED_EXECUTABLES = {
     "auto_oscillation_demo",
     "auto_session_demo",
-    "existing_node_demo",
     "plot_oscillation_targets",
     "simulate_oscillation_targets",
     "standalone_demo",

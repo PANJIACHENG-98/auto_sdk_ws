@@ -289,7 +289,7 @@ class ROS2Backend(RobotBackend):
         return self._node
 
     def close(self) -> None:
-        """按私有或借用 Node 的所有权规则幂等关闭后端。"""
+        """按照运行时所有权规则幂等关闭后端。"""
         if self._closed:
             return
         self._closed = True

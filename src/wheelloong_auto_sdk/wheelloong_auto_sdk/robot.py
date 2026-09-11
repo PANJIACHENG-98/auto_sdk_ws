@@ -31,21 +31,6 @@ class Robot:
         self._closed = False
 
     @classmethod
-    def from_node(cls, node) -> "Robot":
-        """借用任务工程已有 Node 创建直连 ROS 机器人对象。
-
-        Args:
-            node: 由调用方拥有且会持续 spin 的 rclpy Node。
-        Returns:
-            不拥有 Node、Context 或 Executor 的机器人对象。
-        Notes:
-            同步接口若在回调内调用，应使用至少两线程 Executor。
-        """
-        from .backend.ros2 import ROS2Backend
-
-        return cls(ROS2Backend(node))
-
-    @classmethod
     def standalone(
         cls,
         *,
