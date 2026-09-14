@@ -1,14 +1,16 @@
 """Public dual-arm motion API."""
 
+import time
 from typing import Optional, Sequence, Tuple
 
 from .backend.base import RobotBackend
-from .errors import CommandTimeoutError, ValidationError
+from .errors import CommandTimeoutError, RobotStateError, ValidationError
 from .models import (
     ARM_DOF,
     CartesianPoseMM,
     CommandResult,
     MotionMode,
+    SystemState,
     finite_float,
     finite_tuple,
 )
@@ -199,6 +201,154 @@ class Arms:
         except CommandTimeoutError:
             self._best_effort_hold()
             raise
+
+    def move_p_offset(
+        self,
+        *,
+        left: Optional[CartesianPoseMM] = None,
+        right: Optional[CartesianPoseMM] = None,
+        speed_rad_s: float = 0.0,
+        acceleration_rad_s2: float = 0.0,
+        wait: bool = True,
+        timeout_sec: float = 30.0,
+        hold_timeout_sec: float = 3.0,
+        state_timeout_sec: float = 10.0,
+        state_refresh_sec: float = 0.25,
+    ) -> CommandResult:
+        """从当前 TCP 位姿按位置增量和局部旋转偏移执行 MoveP。
+
+        Args:
+            left/right: arm_driver 三轴毫米增量和 TCP 局部旋转增量。
+            speed_rad_s/acceleration_rad_s2: 逆解后的关节速度和加速度。
+            wait: 是否等待运动完成；timeout_sec 为运动超时。
+            hold_timeout_sec: 运动前 Hold 服务超时。
+            state_timeout_sec: 等待当前 TCP 状态的超时。
+            state_refresh_sec: Hold 后用于排除旧状态的等待秒数。
+        Returns:
+            MoveP 成功指令结果。
+        Raises:
+            RobotStateError: 所选手臂缺少当前 TCP 位姿。
+            ValidationError: 偏移、速度或超时参数不合法。
+        Notes:
+            执行前会 Hold 双臂，因此要求左右臂均已使能。
+        """
+        left_offset, right_offset = self._poses(left, right)
+        state, left_target, right_target = self._offset_targets(
+            left_offset,
+            right_offset,
+            hold_timeout_sec=hold_timeout_sec,
+            state_timeout_sec=state_timeout_sec,
+            state_refresh_sec=state_refresh_sec,
+        )
+        return self.move_p(
+            left=left_target,
+            right=right_target,
+            speed_rad_s=speed_rad_s,
+            acceleration_rad_s2=acceleration_rad_s2,
+            left_reference=(
+                state.left_arm_joints if left_target is not None else None
+            ),
+            right_reference=(
+                state.right_arm_joints if right_target is not None else None
+            ),
+            wait=wait,
+            timeout_sec=timeout_sec,
+        )
+
+    def move_l_offset(
+        self,
+        *,
+        left: Optional[CartesianPoseMM] = None,
+        right: Optional[CartesianPoseMM] = None,
+        speed_mm_s: float = 0.0,
+        acceleration_mm_s2: float = 0.0,
+        left_psi_rad: float = 0.0,
+        right_psi_rad: float = 0.0,
+        wait: bool = True,
+        timeout_sec: float = 30.0,
+        hold_timeout_sec: float = 3.0,
+        state_timeout_sec: float = 10.0,
+        state_refresh_sec: float = 0.25,
+    ) -> CommandResult:
+        """从当前 TCP 位姿按位置增量和局部旋转偏移执行 MoveL。
+
+        Args:
+            left/right: arm_driver 三轴毫米增量和 TCP 局部旋转增量。
+            speed_mm_s/acceleration_mm_s2: TCP 直线速度和加速度。
+            left_psi_rad/right_psi_rad: 左右臂臂形角。
+            wait: 是否等待运动完成；timeout_sec 为运动超时。
+            hold_timeout_sec: 运动前 Hold 服务超时。
+            state_timeout_sec: 等待当前 TCP 状态的超时。
+            state_refresh_sec: Hold 后用于排除旧状态的等待秒数。
+        Returns:
+            MoveL 成功指令结果。
+        Raises:
+            RobotStateError: 所选手臂缺少当前 TCP 位姿。
+            ValidationError: 偏移、速度或超时参数不合法。
+        Notes:
+            执行前会 Hold 双臂，因此要求左右臂均已使能。
+        """
+        left_offset, right_offset = self._poses(left, right)
+        _, left_target, right_target = self._offset_targets(
+            left_offset,
+            right_offset,
+            hold_timeout_sec=hold_timeout_sec,
+            state_timeout_sec=state_timeout_sec,
+            state_refresh_sec=state_refresh_sec,
+        )
+        return self.move_l(
+            left=left_target,
+            right=right_target,
+            speed_mm_s=speed_mm_s,
+            acceleration_mm_s2=acceleration_mm_s2,
+            relative=False,
+            left_psi_rad=left_psi_rad,
+            right_psi_rad=right_psi_rad,
+            wait=wait,
+            timeout_sec=timeout_sec,
+        )
+
+    def _offset_targets(
+        self,
+        left_offset: Optional[CartesianPoseMM],
+        right_offset: Optional[CartesianPoseMM],
+        *,
+        hold_timeout_sec: float,
+        state_timeout_sec: float,
+        state_refresh_sec: float,
+    ) -> Tuple[
+        SystemState,
+        Optional[CartesianPoseMM],
+        Optional[CartesianPoseMM],
+    ]:
+        """Hold 后读取当前位姿并生成所选双臂局部偏移的绝对目标。"""
+        hold_timeout = self._timeout(hold_timeout_sec)
+        state_timeout = self._timeout(state_timeout_sec)
+        refresh = finite_float(state_refresh_sec, "state_refresh_sec")
+        if refresh < 0.0:
+            raise ValidationError("state_refresh_sec must be >= 0")
+        self.hold(timeout_sec=hold_timeout)
+        if refresh > 0.0:
+            time.sleep(refresh)
+        state = self._backend.get_system_state(
+            max_age_sec=max(refresh, 0.001),
+            wait_timeout_sec=state_timeout,
+        )
+        if left_offset is not None and state.left_arm_pose is None:
+            raise RobotStateError("current left-arm TCP pose is unavailable")
+        if right_offset is not None and state.right_arm_pose is None:
+            raise RobotStateError("current right-arm TCP pose is unavailable")
+        left_target = (
+            state.left_arm_pose.offset_local(left_offset)
+            if left_offset is not None
+            else None
+        )
+        right_target = (
+            state.right_arm_pose.offset_local(right_offset)
+            if right_offset is not None
+            else None
+        )
+        return state, left_target, right_target
 
     def _best_effort_hold(self) -> None:
         """在手臂指令超时后尽力发送 Hold，且不覆盖原始异常。"""

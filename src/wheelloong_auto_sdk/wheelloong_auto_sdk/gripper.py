@@ -27,7 +27,7 @@ class Gripper:
 
         Args:
             side: LEFT、RIGHT 或 DUAL 夹爪选择。
-            position: 目标行程比例，范围为 [0, 1]。
+            position: 官方协议目标比例，范围 [0, 1]；0 张开、1 闭合。
             speed/torque: 最大速度和力矩比例；小于等于零使用默认值。
             wait: 是否等待实际夹爪状态达到目标。
             tolerance: 状态确认允许误差；timeout_sec 为最长等待秒数。
@@ -62,9 +62,9 @@ class Gripper:
         )
 
     def open(self, side: ArmSide, **kwargs) -> CommandResult:
-        """将指定夹爪移动到最大行程位置 1.0。"""
-        return self.set(side, 1.0, **kwargs)
+        """将指定夹爪张开到官方协议位置 0.0。"""
+        return self.set(side, 0.0, **kwargs)
 
     def close(self, side: ArmSide, **kwargs) -> CommandResult:
-        """将指定夹爪移动到最小行程位置 0.0。"""
-        return self.set(side, 0.0, **kwargs)
+        """将指定夹爪闭合到官方协议位置 1.0。"""
+        return self.set(side, 1.0, **kwargs)

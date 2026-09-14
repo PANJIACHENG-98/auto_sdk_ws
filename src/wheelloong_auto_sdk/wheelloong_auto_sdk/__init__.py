@@ -26,6 +26,12 @@ from .models import (
     SystemState,
 )
 from .navigation import NavigationHandle
+from .profiles import (
+    RobotProfile,
+    SHILOONG_PROFILE,
+    WHEELLOONG_PROFILE,
+    get_robot_profile,
+)
 from .robot import Robot
 from .system import System
 from .waypoints import (
@@ -59,17 +65,21 @@ __all__ = [
     "NavigationRejectedError",
     "NavigationResult",
     "Robot",
+    "RobotProfile",
     "RobotCommandError",
     "RobotStateError",
     "ServiceUnavailableError",
+    "SHILOONG_PROFILE",
     "SystemState",
     "System",
     "ValidationError",
     "WAYPOINT_FILE_ENV",
     "Waypoint",
     "WheelloongSdkError",
+    "WHEELLOONG_PROFILE",
     "append_waypoint",
     "default_waypoint_path",
+    "get_robot_profile",
     "load_waypoints",
     "next_waypoint_id",
 ]

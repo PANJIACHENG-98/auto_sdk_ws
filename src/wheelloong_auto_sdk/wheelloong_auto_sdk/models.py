@@ -175,6 +175,75 @@ class CartesianPoseMM:
             frame_id,
         ).validated()
 
+    @classmethod
+    def from_rpy_degrees(
+        cls,
+        x_mm: float,
+        y_mm: float,
+        z_mm: float,
+        roll_deg: float,
+        pitch_deg: float,
+        yaw_deg: float,
+        *,
+        frame_id: str = "arm_driver",
+    ) -> "CartesianPoseMM":
+        """由毫米位置和度制 RPY 欧拉角创建法兰位姿。
+
+        Args:
+            x_mm/y_mm/z_mm: 法兰位置，单位 mm。
+            roll_deg/pitch_deg/yaw_deg: RPY 姿态，单位 degree。
+            frame_id: 位姿所属坐标系。
+        Returns:
+            四元数已归一化的法兰位姿。
+        Raises:
+            ValidationError: 任一数值不是有限数。
+        """
+        roll, pitch, yaw = finite_tuple(
+            (roll_deg, pitch_deg, yaw_deg), 3, "roll/pitch/yaw degrees"
+        )
+        return cls.from_rpy(
+            x_mm,
+            y_mm,
+            z_mm,
+            math.radians(roll),
+            math.radians(pitch),
+            math.radians(yaw),
+            frame_id=frame_id,
+        )
+
+    def offset_local(self, offset: "CartesianPoseMM") -> "CartesianPoseMM":
+        """叠加毫米平移和绕当前 TCP 局部轴定义的四元数偏移。
+
+        Args:
+            offset: x/y/z 表示毫米增量，四元数表示局部旋转增量。
+        Returns:
+            平移相加且姿态按 self * offset 组合后的绝对位姿。
+        Raises:
+            ValidationError: 基准或偏移位姿不合法。
+        """
+        base = self.validated()
+        if not isinstance(offset, CartesianPoseMM):
+            raise ValidationError("offset must be a CartesianPoseMM")
+        delta = offset.validated()
+        qx = base.qw * delta.qx + base.qx * delta.qw
+        qx += base.qy * delta.qz - base.qz * delta.qy
+        qy = base.qw * delta.qy - base.qx * delta.qz
+        qy += base.qy * delta.qw + base.qz * delta.qx
+        qz = base.qw * delta.qz + base.qx * delta.qy
+        qz += -base.qy * delta.qx + base.qz * delta.qw
+        qw = base.qw * delta.qw - base.qx * delta.qx
+        qw += -base.qy * delta.qy - base.qz * delta.qz
+        return CartesianPoseMM(
+            base.x_mm + delta.x_mm,
+            base.y_mm + delta.y_mm,
+            base.z_mm + delta.z_mm,
+            qx,
+            qy,
+            qz,
+            qw,
+            base.frame_id,
+        ).validated()
+
 
 @dataclass(frozen=True)
 class NavigationPose:

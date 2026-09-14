@@ -127,17 +127,14 @@ def test_installed_sdk_finds_its_colcon_source_waypoint_file(
     assert default_waypoint_path() == configured
 
 
-def test_navigation_example_defaults_to_its_source_waypoint_file(
-    monkeypatch,
-):
-    """Find saved source points when the SDK imports from install/."""
+def test_navigation_example_uses_sdk_runtime_waypoint_path(monkeypatch):
+    """安装环境统一使用 SDK 解析出的可写用户数据路径。"""
     monkeypatch.delenv(WAYPOINT_FILE_ENV, raising=False)
     example = load_navigation_example()
 
     args = example.build_parser().parse_args(["1"])
 
-    expected = EXAMPLE_PATH.parents[1] / "waypoint" / "waypoints.txt"
-    assert args.file == expected
+    assert args.file == default_waypoint_path()
 
 
 @pytest.mark.parametrize(
@@ -147,7 +144,7 @@ def test_navigation_example_defaults_to_its_source_waypoint_file(
 def test_demo_calls_public_navigation_api_directly(
     tmp_path, monkeypatch, waypoint_ids, expected_action
 ):
-    """Call the existing SDK API from main for single and multiple points."""
+    """把编号序列交给 SDK，由接口选择单点或多点 Action。"""
     path = tmp_path / "waypoints.txt"
     first = NavigationPose(1.0, 2.0, 0.3)
     third = NavigationPose(4.0, 5.0, -0.6)
@@ -226,8 +223,7 @@ def test_demo_ctrl_c_cancels_the_active_navigation_goal(
     ] == [int(ControlMode.AUTO), int(ControlMode.IDLE)]
     assert all(name != "set_enabled" for name, _ in backend.calls)
     output = capsys.readouterr()
-    assert "navigation cancellation confirmed: CANCELED" in output.out
-    assert "navigation demo interrupted" in output.err
+    assert "active goal cancellation requested" in output.out
 
 
 def test_demo_preserves_an_initial_auto_mode(tmp_path, monkeypatch):

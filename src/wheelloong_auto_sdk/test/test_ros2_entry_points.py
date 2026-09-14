@@ -6,9 +6,11 @@ from importlib.metadata import distribution
 EXPECTED_EXECUTABLES = {
     "auto_oscillation_demo",
     "auto_session_demo",
+    "mobile_manipulation_demo",
     "plot_oscillation_targets",
+    "separation_demo",
     "simulate_oscillation_targets",
-    "standalone_demo",
+    "voice_demo",
     "waypoint_navigation_demo",
     "waypoint_recorder",
 }

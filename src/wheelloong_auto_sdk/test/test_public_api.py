@@ -13,7 +13,9 @@ from wheelloong_auto_sdk import (
     NavigationError,
     NavigationPose,
     Robot,
+    RobotStateError,
     ValidationError,
+    get_robot_profile,
 )
 from wheelloong_auto_sdk.backend import MockBackend
 
@@ -96,6 +98,18 @@ def test_cartesian_pose_normalizes_quaternion():
     assert rpy_pose.qz == pytest.approx(1.0)
 
 
+def test_robot_profile_exposes_reusable_shiloong_poses_and_limits():
+    """机型配置统一提供工作位、结束位和机械限位。"""
+    profile = get_robot_profile("shiloong")
+    left, right = profile.work_arm_joints()
+
+    assert math.degrees(left[0]) == pytest.approx(10.0)
+    assert math.degrees(right[2]) == pytest.approx(80.0)
+    assert profile.validate_arm_degrees(profile.work_left_deg, side="left")
+    with pytest.raises(ValidationError, match="J1"):
+        profile.validate_arm_degrees([156.0] + [0.0] * 6, side="left")
+
+
 def test_system_state_exposes_current_dual_arm_tcp_poses():
     """通过公共状态对象读取 /system/get_info 的当前双臂 TCP 位姿。"""
     robot, backend = make_robot()
@@ -114,8 +128,8 @@ def test_gripper_and_navigation_public_api():
     robot, backend = make_robot()
     robot.gripper.open(ArmSide.DUAL)
     state = robot.state()
-    assert state.left_gripper == 1.0
-    assert state.right_gripper == 1.0
+    assert state.left_gripper == 0.0
+    assert state.right_gripper == 0.0
     handle = robot.navigation.navigate_to(NavigationPose(1.0, 2.0, 0.3))
     assert handle.wait(timeout_sec=1.0).succeeded
 
@@ -165,6 +179,41 @@ def test_multi_point_resume_reissues_original_sequence():
     assert backend.calls[-1][1]["poses"] == tuple(poses)
 
 
+@pytest.mark.parametrize(
+    ("poses", "expected"),
+    (
+        ([NavigationPose(1.0, 2.0, 0.3)], "navigate_to"),
+        (
+            [NavigationPose(1.0, 2.0, 0.3), NavigationPose(3.0, 4.0, 0.5)],
+            "navigate_through",
+        ),
+    ),
+)
+def test_navigation_sequence_selects_single_or_multi_action(poses, expected):
+    """统一 navigate() 根据目标数量选择单点或多点 Action。"""
+    robot, backend = make_robot()
+
+    robot.navigation.navigate(poses)
+
+    assert backend.calls[-1][0] == expected
+
+
+def test_system_require_ready_checks_mode_axes_and_errors():
+    """统一就绪检查同时覆盖 AUTO、使能和活动错误。"""
+    robot, backend = make_robot()
+    axes = AxisSelection(left_arm=True)
+    backend.state = replace(
+        backend.state,
+        control_mode=int(ControlMode.AUTO),
+        left_arm_enabled=True,
+    )
+    assert robot.system.require_ready(axes).left_arm_enabled
+
+    backend.state = replace(backend.state, errors=("fault",))
+    with pytest.raises(RobotStateError, match="fault"):
+        robot.system.require_ready(axes)
+
+
 def test_auto_session_cleans_up_after_exception():
     """Return to IDLE and disable requested axes after a task exception."""
     robot, backend = make_robot()
@@ -182,6 +231,68 @@ def test_auto_session_cleans_up_after_exception():
     assert names[-3:] == ["arm_hold", "set_control_mode", "set_enabled"]
 
 
+def test_auto_session_can_preserve_an_initial_auto_mode():
+    """无轴导航会话可在退出后保留进入前已有的 AUTO。"""
+    robot, backend = make_robot()
+    backend.state = replace(
+        backend.state,
+        control_mode=int(ControlMode.AUTO),
+    )
+
+    with robot.auto_session(
+        required_axes=AxisSelection.none(),
+        restore_initial_mode=True,
+    ):
+        pass
+
+    mode_requests = [
+        values["mode"]
+        for name, values in backend.calls
+        if name == "set_control_mode"
+    ]
+    assert mode_requests == [int(ControlMode.AUTO)]
+
+
+def test_auto_session_holds_arms_after_keyboard_interrupt():
+    """Ctrl+C 后先 Hold 双臂，再切换 IDLE 并去使能。"""
+    robot, backend = make_robot()
+    axes = AxisSelection(left_arm=True, right_arm=True)
+
+    with pytest.raises(KeyboardInterrupt):
+        with robot.auto_session(required_axes=axes):
+            raise KeyboardInterrupt
+
+    names = [name for name, _ in backend.calls]
+    cleanup_start = len(names) - 3
+    assert names[cleanup_start:] == ["arm_hold", "set_control_mode", "set_enabled"]
+    assert backend.state.control_mode == 99
+    assert not backend.state.left_arm_enabled
+    assert not backend.state.right_arm_enabled
+
+
+def test_auto_session_holds_arms_when_interrupted_during_entry(monkeypatch):
+    """进入 AUTO 过程中收到 Ctrl+C 也执行 Hold 和退出清理。"""
+    robot, backend = make_robot()
+    original_set_control_mode = backend.set_control_mode
+
+    def interrupt_auto_request(mode, timeout_sec):
+        if int(mode) == 2:
+            raise KeyboardInterrupt
+        return original_set_control_mode(mode, timeout_sec)
+
+    monkeypatch.setattr(backend, "set_control_mode", interrupt_auto_request)
+
+    with pytest.raises(KeyboardInterrupt):
+        with robot.auto_session(
+            required_axes=AxisSelection(left_arm=True, right_arm=True)
+        ):
+            pytest.fail("AUTO session must not enter after Ctrl+C")
+
+    names = [name for name, _ in backend.calls]
+    assert names == ["arm_hold", "set_control_mode"]
+    assert backend.state.control_mode == 99
+
+
 @pytest.mark.parametrize(
     "call",
     [
@@ -192,7 +303,9 @@ def test_auto_session_cleans_up_after_exception():
         lambda robot: robot.body.move(),
         lambda robot: robot.body.move(head_pitch_rad=0.0, wait=False, timeout_sec=31.0),
         lambda robot: robot.gripper.set(ArmSide.LEFT, 1.1),
+        lambda robot: robot.navigation.navigate([]),
         lambda robot: robot.navigation.navigate_through([]),
+        lambda robot: robot.navigation.navigate_waypoints([True]),
         lambda robot: robot.voice.speak("   "),
     ],
 )

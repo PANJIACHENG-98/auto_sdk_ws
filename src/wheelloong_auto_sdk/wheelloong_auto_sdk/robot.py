@@ -84,6 +84,7 @@ class Robot:
         state_timeout_sec: float = 5.0,
         service_timeout_sec: float = 5.0,
         max_state_age_sec: float = 0.5,
+        restore_initial_mode: bool = False,
     ) -> AutoSession:
         """创建负责 AUTO、使能、Hold 和退出清理的上下文管理器。
 
@@ -92,6 +93,7 @@ class Robot:
             state_timeout_sec: 等待控制模式或使能状态确认的秒数。
             service_timeout_sec: 等待底层服务响应的秒数。
             max_state_age_sec: 进入会话时允许的状态最大年龄。
+            restore_initial_mode: 进入前已是 AUTO 时，退出后继续保持 AUTO。
         Returns:
             尚未进入的 AutoSession；应配合 with 使用。
         Raises:
@@ -105,7 +107,14 @@ class Robot:
         max_age = finite_float(max_state_age_sec, "max_state_age_sec")
         if min(state_timeout, service_timeout, max_age) <= 0.0:
             raise ValidationError("AUTO session timeouts must be greater than zero")
-        return AutoSession(self, axes, state_timeout, service_timeout, max_age)
+        return AutoSession(
+            self,
+            axes,
+            state_timeout,
+            service_timeout,
+            max_age,
+            bool(restore_initial_mode),
+        )
 
     def close(self) -> None:
         """取消活动导航并按后端所有权规则释放资源；可重复调用。"""

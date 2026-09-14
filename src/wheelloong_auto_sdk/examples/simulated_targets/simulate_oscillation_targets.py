@@ -13,31 +13,15 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import Dict, Iterator, Tuple
 
+from wheelloong_auto_sdk import get_robot_profile
+from wheelloong_auto_sdk._cli import non_negative_number, positive_number
+
 
 DEFAULT_DURATION_SEC = 20.0
 DEFAULT_PERIOD_SEC = 4.0
 DEFAULT_RATE_HZ = 5.0
 DEFAULT_AMPLITUDE_DEG = 3.0
 DEFAULT_LUMBAR_LIFT_MM = 100.0
-SHILOONG_WORK_LEFT_DEG = (10.0, 77.0, -80.0, 20.0, -25.0, 10.0, 10.0)
-SHILOONG_WORK_RIGHT_DEG = (-10.0, 77.0, 80.0, 20.0, 25.0, -10.0, 10.0)
-
-
-def parse_positive(value: str) -> float:
-    """解析有限正数命令行参数。"""
-    parsed = float(value)
-    if not math.isfinite(parsed) or parsed <= 0.0:
-        raise argparse.ArgumentTypeError(f"expected finite value > 0: {value}")
-    return parsed
-
-
-def parse_non_negative(value: str) -> float:
-    """解析有限非负命令行参数。"""
-    parsed = float(value)
-    if not math.isfinite(parsed) or parsed < 0.0:
-        message = f"expected finite value >= 0: {value}"
-        raise argparse.ArgumentTypeError(message)
-    return parsed
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -50,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--duration", type=parse_positive, default=DEFAULT_DURATION_SEC
+        "--duration", type=positive_number, default=DEFAULT_DURATION_SEC
     )
     parser.add_argument(
         "--robot",
@@ -59,17 +43,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="robot model used to select the arm work pose",
     )
     parser.add_argument(
-        "--period", type=parse_positive, default=DEFAULT_PERIOD_SEC
+        "--period", type=positive_number, default=DEFAULT_PERIOD_SEC
     )
-    parser.add_argument("--rate", type=parse_positive, default=DEFAULT_RATE_HZ)
+    parser.add_argument("--rate", type=positive_number, default=DEFAULT_RATE_HZ)
     parser.add_argument(
         "--amplitude-deg",
-        type=parse_non_negative,
+        type=non_negative_number,
         default=DEFAULT_AMPLITUDE_DEG,
     )
     parser.add_argument(
         "--lumbar-lift-amplitude-mm",
-        type=parse_non_negative,
+        type=non_negative_number,
         default=DEFAULT_LUMBAR_LIFT_MM,
     )
     parser.add_argument("--output-dir", type=Path, default=default_dir)
@@ -80,12 +64,7 @@ def work_arm_targets(
     robot_name: str,
 ) -> Tuple[Tuple[float, ...], Tuple[float, ...]]:
     """返回离线模拟使用的左右臂七轴工作姿态，单位 rad。"""
-    if robot_name == "shiloong":
-        return (
-            tuple(math.radians(value) for value in SHILOONG_WORK_LEFT_DEG),
-            tuple(math.radians(value) for value in SHILOONG_WORK_RIGHT_DEG),
-        )
-    return (0.0,) * 7, (0.0,) * 7
+    return get_robot_profile(robot_name).work_arm_joints()
 
 
 def generate_samples(

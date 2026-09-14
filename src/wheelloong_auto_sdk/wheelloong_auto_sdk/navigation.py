@@ -1,6 +1,7 @@
 """Public navigation API with controllable handles and map helpers."""
 
-from typing import Callable, List, Optional, Sequence
+from pathlib import Path
+from typing import Callable, List, Optional, Sequence, Union
 
 from .backend.base import BackendNavigationHandle, RobotBackend
 from .errors import (
@@ -266,6 +267,98 @@ class Navigation:
         handle = NavigationHandle(start(timeout), start)
         self._active.append(handle)
         return handle
+
+    def navigate(
+        self,
+        poses: Sequence[NavigationPose],
+        *,
+        mode: NavigationMode = NavigationMode.DEFAULT,
+        behavior_tree: str = "",
+        server_timeout_sec: float = 5.0,
+    ) -> NavigationHandle:
+        """接收导航点序列并自动选择单点或多点导航接口。
+
+        Args:
+            poses: 一个或多个按执行顺序排列的 NavigationPose。
+            mode: 默认或精确导航策略。
+            behavior_tree: 非空时覆盖 mode 对应行为树。
+            server_timeout_sec: 等待 Action Server 接受目标的秒数。
+        Returns:
+            可等待、暂停、恢复和取消的统一导航句柄。
+        Raises:
+            ValidationError: 序列为空、目标类型或参数不合法。
+        """
+        try:
+            targets = tuple(poses)
+        except TypeError as exc:
+            raise ValidationError("poses must be a sequence") from exc
+        if not targets:
+            raise ValidationError("poses must contain at least one target")
+        if len(targets) == 1:
+            return self.navigate_to(
+                targets[0],
+                mode=mode,
+                behavior_tree=behavior_tree,
+                server_timeout_sec=server_timeout_sec,
+            )
+        return self.navigate_through(
+            targets,
+            mode=mode,
+            behavior_tree=behavior_tree,
+            server_timeout_sec=server_timeout_sec,
+        )
+
+    def navigate_waypoints(
+        self,
+        waypoint_ids: Sequence[int],
+        *,
+        path: Optional[Union[str, Path]] = None,
+        mode: NavigationMode = NavigationMode.DEFAULT,
+        behavior_tree: str = "",
+        server_timeout_sec: float = 5.0,
+    ) -> NavigationHandle:
+        """从点位文件选择编号序列并执行单点或多点导航。
+
+        Args:
+            waypoint_ids: 一个或多个按执行顺序排列的点位编号。
+            path: 可选点位文件；None 使用运行时默认路径。
+            mode: 默认或精确导航策略。
+            behavior_tree: 非空时覆盖 mode 对应行为树。
+            server_timeout_sec: 等待 Action Server 接受目标的秒数。
+        Returns:
+            由 navigate() 创建的统一导航句柄。
+        Raises:
+            ValidationError: 编号序列为空、点位不存在或文件不合法。
+            OSError: 点位文件无法读取。
+        """
+        from .waypoints import load_waypoints
+
+        try:
+            identifiers = tuple(waypoint_ids)
+        except TypeError as exc:
+            raise ValidationError("waypoint_ids must be a sequence") from exc
+        if not identifiers:
+            raise ValidationError(
+                "waypoint_ids must contain at least one identifier"
+            )
+        if any(
+            isinstance(item, bool) or not isinstance(item, int) or item < 1
+            for item in identifiers
+        ):
+            raise ValidationError(
+                "every waypoint id must be a positive integer"
+            )
+        waypoints = load_waypoints(path)
+        missing = [item for item in identifiers if item not in waypoints]
+        if missing:
+            values = ",".join(str(item) for item in missing)
+            raise ValidationError(f"unknown waypoint ids: {values}")
+        return self.navigate(
+            [waypoints[item].pose for item in identifiers],
+            mode=mode,
+            behavior_tree=behavior_tree,
+            server_timeout_sec=server_timeout_sec,
+        )
 
     def clear_local_costmap(
         self, *, timeout_sec: float = 5.0

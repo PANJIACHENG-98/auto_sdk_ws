@@ -1,7 +1,7 @@
 """Public System mode, state, and actuator-enable API."""
 
 from .backend.base import RobotBackend
-from .errors import ValidationError
+from .errors import RobotStateError, ValidationError
 from .models import (
     AxisSelection,
     CommandResult,
@@ -159,3 +159,37 @@ class System:
         return self.wait_for_enabled(
             AxisSelection.none(), timeout_sec=timeout_sec
         )
+
+    def require_ready(
+        self,
+        required_axes: AxisSelection,
+        *,
+        max_age_sec: float = 1.0,
+        wait_timeout_sec: float = 1.0,
+    ) -> SystemState:
+        """确认系统处于 AUTO、指定轴仍使能且不存在活动错误。
+
+        Args:
+            required_axes: 当前任务必须保持使能的轴。
+            max_age_sec: 可接受状态缓存的最大年龄。
+            wait_timeout_sec: 等待新状态的最长秒数。
+        Returns:
+            已通过三项检查的状态快照。
+        Raises:
+            RobotStateError: 模式、使能或错误状态不满足运动条件。
+            ValidationError: 轴选择或时间参数不合法。
+        """
+        axes = self._axes(required_axes)
+        state = self.state(
+            max_age_sec=max_age_sec,
+            wait_timeout_sec=wait_timeout_sec,
+        )
+        if state.control_mode != int(ControlMode.AUTO):
+            raise RobotStateError("System is not in AUTO mode")
+        if not axes.satisfied_by(state):
+            raise RobotStateError("a required actuator is not enabled")
+        if state.errors:
+            raise RobotStateError(
+                "robot reports errors: " + "; ".join(state.errors)
+            )
+        return state

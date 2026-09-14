@@ -19,6 +19,7 @@ class AutoSession:
         state_timeout_sec: float,
         service_timeout_sec: float,
         max_state_age_sec: float,
+        restore_initial_mode: bool,
     ) -> None:
         """保存会话所需机器人、轴配置和状态/服务超时参数。"""
         self._robot = robot
@@ -27,6 +28,8 @@ class AutoSession:
         self._state_timeout_sec = state_timeout_sec
         self._service_timeout_sec = service_timeout_sec
         self._max_state_age_sec = max_state_age_sec
+        self._restore_initial_mode = restore_initial_mode
+        self._initial_mode: Optional[int] = None
         self._auto_requested = False
         self._enable_requested = False
 
@@ -37,6 +40,7 @@ class AutoSession:
                 max_age_sec=self._max_state_age_sec,
                 wait_timeout_sec=self._state_timeout_sec,
             )
+            self._initial_mode = state.control_mode
             if state.errors:
                 raise RobotStateError(
                     "robot reports active errors before AUTO entry: " + "; ".join(state.errors)
@@ -62,7 +66,7 @@ class AutoSession:
             if self._required_axes.left_arm or self._required_axes.right_arm:
                 self._backend.arm_hold(self._service_timeout_sec)
             return self._robot
-        except Exception:
+        except BaseException:
             self._cleanup(suppress=True)
             raise
 
@@ -85,7 +89,11 @@ class AutoSession:
                 self._backend.arm_hold(self._service_timeout_sec)
             except BaseException as exc:
                 errors.append(exc)
-        if self._auto_requested:
+        restore_auto = (
+            self._restore_initial_mode
+            and self._initial_mode == int(ControlMode.AUTO)
+        )
+        if self._auto_requested and not restore_auto:
             try:
                 self._robot.system.set_control_mode(
                     ControlMode.IDLE, timeout_sec=self._service_timeout_sec
@@ -107,6 +115,7 @@ class AutoSession:
                 errors.append(exc)
         self._auto_requested = False
         self._enable_requested = False
+        self._initial_mode = None
         if errors and suppress:
             logger = getattr(self._backend.node, "get_logger", lambda: None)()
             if logger is not None:

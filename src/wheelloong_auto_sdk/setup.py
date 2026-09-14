@@ -5,18 +5,23 @@ from setuptools import find_packages, setup
 
 PACKAGE_NAME = "wheelloong_auto_sdk"
 EXAMPLES_PACKAGE = "wheelloong_auto_sdk_examples"
+SIMULATED_TARGETS_PACKAGE = f"{EXAMPLES_PACKAGE}.simulated_targets"
 
 EXAMPLE_ENTRY_POINTS = [
     "auto_oscillation_demo = "
     f"{EXAMPLES_PACKAGE}.auto_oscillation_demo:main",
     "auto_session_demo = "
     f"{EXAMPLES_PACKAGE}.auto_session_demo:main",
+    "mobile_manipulation_demo = "
+    f"{EXAMPLES_PACKAGE}.mobile_manipulation_demo:main",
     "plot_oscillation_targets = "
-    f"{EXAMPLES_PACKAGE}.plot_oscillation_targets:main",
+    f"{SIMULATED_TARGETS_PACKAGE}.plot_oscillation_targets:main",
+    "separation_demo = "
+    f"{EXAMPLES_PACKAGE}.separation_demo:main",
     "simulate_oscillation_targets = "
-    f"{EXAMPLES_PACKAGE}.simulate_oscillation_targets:main",
-    "standalone_demo = "
-    f"{EXAMPLES_PACKAGE}.standalone_demo:main",
+    f"{SIMULATED_TARGETS_PACKAGE}.simulate_oscillation_targets:main",
+    "voice_demo = "
+    f"{EXAMPLES_PACKAGE}.voice_demo:main",
     "waypoint_navigation_demo = "
     f"{EXAMPLES_PACKAGE}.waypoint_navigation_demo:main",
     "waypoint_recorder = "
@@ -31,7 +36,7 @@ setup(
         find_packages(
             exclude=("test", "test.*", "examples", "examples.*")
         )
-        + [EXAMPLES_PACKAGE]
+        + [EXAMPLES_PACKAGE, SIMULATED_TARGETS_PACKAGE]
     ),
     package_dir={EXAMPLES_PACKAGE: "examples"},
     data_files=[

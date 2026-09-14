@@ -4,7 +4,12 @@ import importlib.util
 from dataclasses import replace
 from pathlib import Path
 
-from wheelloong_auto_sdk import ArmSide, CartesianPoseMM, Robot
+from wheelloong_auto_sdk import (
+    ArmSide,
+    CartesianPoseMM,
+    Robot,
+    get_robot_profile,
+)
 from wheelloong_auto_sdk.backend import MockBackend
 
 
@@ -83,7 +88,7 @@ def test_parser_defaults_match_installed_official_demo():
 def test_shiloong_final_pose_matches_official_demo_degrees():
     """确认侍龙结束姿态与官方 Demo 常量一致。"""
     example = load_example_module()
-    left, right = example.return_arm_targets("shiloong")
+    left, right = get_robot_profile("shiloong").return_arm_joints()
     assert tuple(round(example.math.degrees(value), 6) for value in left) == (
         0.0,
         85.0,
@@ -131,20 +136,25 @@ def test_move_p_then_move_l_offsets_use_each_arm_pose_and_shared_speed(
         right_arm_pose=right_current,
     )
     robot = Robot.with_backend(backend)
-    monkeypatch.setattr(example.time, "sleep", lambda _seconds: None)
-
-    example.command_move_p_offset(
-        robot,
-        args,
-        left_offset_6d=(10.0, 0.0, 30.0, 0.0, 0.0, 5.0),
-        right_offset_6d=(-10.0, 0.0, 40.0, 0.0, 0.0, -5.0),
+    robot.arms.move_p_offset(
+        left=CartesianPoseMM.from_rpy_degrees(
+            10.0, 0.0, 30.0, 0.0, 0.0, 5.0
+        ),
+        right=CartesianPoseMM.from_rpy_degrees(
+            -10.0, 0.0, 40.0, 0.0, 0.0, -5.0
+        ),
         speed_rad_s=0.3,
+        state_refresh_sec=0.0,
     )
-    example.command_move_l_offset(
-        robot,
-        args,
-        left_offset_6d=(0.0, 20.0, 30.0, 1.0, 0.0, 0.0),
-        right_offset_6d=(0.0, -20.0, 40.0, -1.0, 0.0, 0.0),
+    robot.arms.move_l_offset(
+        left=CartesianPoseMM.from_rpy_degrees(
+            0.0, 20.0, 30.0, 1.0, 0.0, 0.0
+        ),
+        right=CartesianPoseMM.from_rpy_degrees(
+            0.0, -20.0, 40.0, -1.0, 0.0, 0.0
+        ),
+        speed_mm_s=10.0,
+        state_refresh_sec=0.0,
     )
 
     assert [name for name, _ in backend.calls] == [
@@ -174,36 +184,16 @@ def test_move_p_then_move_l_offsets_use_each_arm_pose_and_shared_speed(
     assert line["wait"] is True
 
 
-def test_absolute_cartesian_commands_accept_only_dual_six_d_poses():
-    """确认绝对接口直接转换左右六维位姿并使用共同默认速度。"""
-    example = load_example_module()
-    args = example.build_parser().parse_args(["--robot", "shiloong"])
-    backend = MockBackend()
-    robot = Robot.with_backend(backend)
+def test_cartesian_pose_accepts_degree_rpy_and_local_offset():
+    """确认公共数据类型完成度制 RPY 转换和局部偏移。"""
+    base = CartesianPoseMM.from_rpy_degrees(100.0, 200.0, -300.0, 0, 0, 10)
+    offset = CartesianPoseMM.from_rpy_degrees(10.0, -20.0, 30.0, 1, 2, 3)
+    target = base.offset_local(offset)
 
-    example.command_move_p_absolute(
-        robot,
-        args,
-        left_pose_6d=(100.0, 200.0, -300.0, 0.0, 0.0, 10.0),
-        right_pose_6d=(-100.0, -200.0, -310.0, 0.0, 0.0, -10.0),
-    )
-    example.command_move_l_absolute(
-        robot,
-        args,
-        left_pose_6d=(110.0, 210.0, -290.0, 1.0, 2.0, 3.0),
-        right_pose_6d=(-110.0, -210.0, -300.0, -1.0, -2.0, -3.0),
-    )
-
-    assert [name for name, _ in backend.calls] == ["move_p", "move_l"]
-    point = backend.calls[0][1]
-    assert point["left"].x_mm == 100.0
-    assert point["right"].z_mm == -310.0
-    assert point["speed"] == 0.2
-    line = backend.calls[1][1]
-    assert int(line["mode"]) == 0
-    assert line["left"].y_mm == 210.0
-    assert line["right"].z_mm == -300.0
-    assert line["speed"] == 10.0
+    assert target.x_mm == 110.0
+    assert target.y_mm == 180.0
+    assert target.z_mm == -270.0
+    assert target.qz != base.qz
 
 
 def test_full_demo_uses_explicit_system_and_cartesian_interfaces(monkeypatch):
@@ -226,7 +216,9 @@ def test_full_demo_uses_explicit_system_and_cartesian_interfaces(monkeypatch):
     assert names[-2:] == ["set_control_mode", "set_enabled"]
     assert backend.calls[0][1]["mode"] == 2
     work_move = backend.calls[3][1]
-    expected_left, expected_right = example.work_arm_targets("shiloong")
+    expected_left, expected_right = get_robot_profile(
+        "shiloong"
+    ).work_arm_joints()
     assert work_move["left"] == tuple(expected_left)
     assert work_move["right"] == tuple(expected_right)
     move_p_index = names.index("move_p")
