@@ -73,14 +73,18 @@ auto_sdk_ws/
 安装在 `/home/niic/wheelloong/install`，语音系统位于
 `/home/niic/wheelloong_voice/install`。
 
-先通过桌面的 `Shiloong_start` 启动机器人主系统。构建 SDK 时建议退出 Conda 或
-Miniforge 环境，避免其 Python 版本覆盖 ROS 2 使用的系统 Python。
+先通过桌面的 `Shiloong_start` 启动机器人主系统。源码可由普通用户克隆和编辑，
+但本机的 SDK 构建、测试和 Demo 运行统一在 `sudo su` 进入的 root shell 中执行。
+进入 root shell 前建议退出 Conda 或 Miniforge 环境，避免其 Python 版本覆盖 ROS 2
+使用的系统 Python。
 
 ```bash
 cd /home/niic
 git clone https://github.com/PANJIACHENG-98/auto_sdk_ws.git
 cd auto_sdk_ws
 
+sudo su
+cd /home/niic/auto_sdk_ws
 source /opt/ros/humble/setup.bash
 source /opt/wheelloong/wheelloong_env.sh
 source /home/niic/wheelloong/install/setup.bash
@@ -94,30 +98,23 @@ source install/setup.bash
 上面是首次构建时需要的完整底层环境顺序。`source_env.sh` 还会在最后加载
 本工作区的 `install/setup.bash`，因此它适合已完成至少一次构建后使用。
 
-构建完成后，每次打开新终端只需执行下面一条命令，即可依次加载 ROS、机器人主系统、
-语音系统和本工作区环境：
+构建完成后，每次打开新终端都先进入 root shell、回到工作区，再加载 ROS、机器人
+主系统、语音系统和本工作区环境：
 
 ```bash
-source /home/niic/auto_sdk_ws/scripts/source_env.sh
+sudo su
+cd /home/niic/auto_sdk_ws
+source scripts/source_env.sh
 ```
 
 脚本会依次打印已加载的 ROS 2、平台公共环境、主系统、部署环境、
 侍龙机型环境、语音系统和 AUTO SDK；任一文件不存在时会立即失败并给出路径。
 
-如果 `colcon build` 报告 `build/install/log` 无写入权限，先确认三个目录中
-没有需要保留的手工文件，再恢复当前用户所有权后重新构建：
+采用该方式后，`build/`、`install/` 和 `log/` 由 root 创建属于正常现象；后续构建和
+测试也应继续在 root shell 中执行，避免不同用户混用造成权限不一致。不要写成
+`sudo source ...`，因为 `source` 必须影响当前 shell 环境。
 
-```bash
-sudo chown -R "$USER":"$USER" \
-  /home/niic/auto_sdk_ws/build \
-  /home/niic/auto_sdk_ws/install \
-  /home/niic/auto_sdk_ws/log
-colcon build --packages-select wheelloong_auto_sdk
-source install/setup.bash
-```
-
-如果当前终端已进入 Conda/Miniforge 环境，可先执行 `conda deactivate`。导入检查可
-明确使用系统 Python：
+导入检查可明确使用系统 Python：
 
 ```bash
 /usr/bin/python3 -c "from wheelloong_auto_sdk import Robot; print('SDK import OK')"
@@ -126,7 +123,9 @@ source install/setup.bash
 修改 SDK 后，可执行完整构建和测试：
 
 ```bash
+sudo su
 cd /home/niic/auto_sdk_ws
+source scripts/source_env.sh
 colcon build --packages-select wheelloong_auto_sdk
 source install/setup.bash
 colcon test --packages-select wheelloong_auto_sdk --event-handlers console_direct+
@@ -272,9 +271,20 @@ with Robot.standalone(node_name="my_shiloong_task") as robot:
 运行任何 Demo 前，应完成以下准备：
 
 - 通过桌面 `Shiloong_start` 启动侍龙 L4 主系统，并确认相关终端没有异常退出。
-- 在当前终端执行 `source /home/niic/auto_sdk_ws/scripts/source_env.sh`。
+- 执行 `sudo su` 进入 root shell，并回到 `/home/niic/auto_sdk_ws`。
+- 在 root shell 中先执行 `source scripts/source_env.sh`，确认所有环境均加载成功。
 - 确认机器人没有活动错误，急停可用，底盘路径和本体运动空间无人员及障碍物。
 - 真机运动过程由操作员现场全程监护，不要仅依赖软件超时或 `Ctrl+C`。
+
+完整启动顺序如下。本文后续所有 `ros2 run` 命令均假定在这个已加载环境的 root
+shell 中执行，不要使用单独的 `sudo ros2 run ...`：
+
+```bash
+sudo su
+cd /home/niic/auto_sdk_ws
+source scripts/source_env.sh
+ros2 run wheelloong_auto_sdk <示例名> [参数]
+```
 
 可用 `ros2 run wheelloong_auto_sdk <示例名> --help` 查看当前安装版本实际接受的参数。
 
